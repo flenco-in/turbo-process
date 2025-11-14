@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# TurboProcess data
+.turboprocess/
+
+# Testing
+coverage/
+.nyc_output/
+test-app.js
+watch-test.js
+*-test.yml
+invalid-*.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+
+# Documentation (internal)
+PROGRESS.md
+PROJECT_STRUCTURE.md

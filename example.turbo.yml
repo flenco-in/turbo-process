@@ -1,0 +1,27 @@
+# TurboProcess Configuration Example
+# Copy this file and customize for your application
+
+apps:
+  - name: api-server
+    script: ./dist/server.js
+    instances: 1
+    env:
+      NODE_ENV: production
+      PORT: 3000
+    watch: false
+    memory_limit: 512mb
+    cpu_limit: 80
+    restart_delay: 2000
+    max_restarts: 10
+    health_check: http://localhost:3000/health
+    log_format: json
+    log_output: file
+
+  - name: worker
+    script: ./dist/worker.js
+    instances: 2
+    env:
+      NODE_ENV: production
+    watch: false
+    memory_limit: 256mb
+    restart_delay: 1000

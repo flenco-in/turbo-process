@@ -1,0 +1,2 @@
+# Components directory
+# Will contain: cluster-manager, watch-manager, health-checker, crash-reporter, log-manager, resource-monitor, metrics-exporter
