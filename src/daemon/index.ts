@@ -222,6 +222,12 @@ export class Daemon {
         case 'delete':
           return await this.handleDelete(command);
         
+        case 'startup':
+          return await this.handleStartup();
+        
+        case 'unstartup':
+          return await this.handleUnstartup();
+        
         default:
           return {
             success: false,
@@ -544,6 +550,44 @@ export class Daemon {
       success: true,
       message: 'State saved successfully',
     };
+  }
+
+  /**
+   * Handle startup command
+   */
+  private async handleStartup(): Promise<CLIResponse> {
+    try {
+      const { StartupManager } = await import('../utils/startup-manager');
+      const message = await StartupManager.setupStartup();
+      return {
+        success: true,
+        message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Failed to enable startup: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Handle unstartup command
+   */
+  private async handleUnstartup(): Promise<CLIResponse> {
+    try {
+      const { StartupManager } = await import('../utils/startup-manager');
+      const message = await StartupManager.removeStartup();
+      return {
+        success: true,
+        message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Failed to disable startup: ${error.message}`,
+      };
+    }
   }
 
   /**

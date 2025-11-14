@@ -251,6 +251,26 @@ program
     });
   });
 
+// Startup command
+program
+  .command('startup')
+  .description('Enable auto-start on system boot')
+  .action(async () => {
+    await sendCommand({
+      action: 'startup',
+    });
+  });
+
+// Unstartup command
+program
+  .command('unstartup')
+  .description('Disable auto-start on system boot')
+  .action(async () => {
+    await sendCommand({
+      action: 'unstartup',
+    });
+  });
+
 // Parse arguments
 program.parse(process.argv);
 

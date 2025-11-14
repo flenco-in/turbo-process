@@ -10,6 +10,7 @@
 
 PM2 is old, bloated, and buggy. TurboProcess is the modern alternative with:
 
+- ✅ **🔥 Survives system reboots** (PM2 loses processes!)
 - ✅ **Reliable auto-restart** with exponential backoff (PM2's is buggy)
 - ✅ **Detailed crash analytics** (PM2 just logs exit codes)
 - ✅ **Smart resource monitoring** (PM2 misses memory leaks)
@@ -145,6 +146,8 @@ turbo start turbo.yml
 | `turbo logs <id\|name>` | Stream process logs |
 | `turbo save` | Save current state |
 | `turbo delete <id\|name>` | Remove process from registry |
+| `turbo startup` | 🔥 Enable auto-start on reboot |
+| `turbo unstartup` | Disable auto-start |
 
 ## 🎨 CLI Options
 
