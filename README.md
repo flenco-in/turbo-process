@@ -293,7 +293,10 @@ Contributions welcome! This is a modern alternative to PM2 built with:
 - [x] Watch mode
 - [x] Health checks
 - [x] Beautiful CLI
-- [ ] Cluster mode (zero-downtime)
+- [x] State persistence
+- [x] YAML configuration
+- [x] Log rotation
+- [ ] Cluster mode (in progress)
 - [ ] Prometheus metrics
 - [ ] Terminal dashboard
 - [ ] npm publish

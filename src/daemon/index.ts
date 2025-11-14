@@ -268,7 +268,7 @@ export class Daemon {
       script: target,
       args: options.args,
       env: this.parseEnvVars(options.env),
-      instances: options.instances,
+      instances: options.instances === 'auto' ? 'auto' : (options.instances ? parseInt(options.instances, 10) : undefined),
       watch: options.watch,
     };
 
@@ -366,17 +366,30 @@ export class Daemon {
       };
     }
 
+    const options = command.options || {};
+    const zeroDowntime = options.zeroDowntime || false;
+
     if (target === 'all') {
       // Restart all processes
       const processes = this.processManager.listProcesses();
       const restarted = [];
       for (const proc of processes) {
-        const newProc = await this.processManager.restartProcess(proc.id);
+        let newProc;
+        if (zeroDowntime) {
+          try {
+            newProc = await this.processManager.restartZeroDowntime(proc.id);
+          } catch (error: any) {
+            // Fall back to regular restart if not clustered
+            newProc = await this.processManager.restartProcess(proc.id);
+          }
+        } else {
+          newProc = await this.processManager.restartProcess(proc.id);
+        }
         restarted.push(newProc);
       }
       return {
         success: true,
-        message: `Restarted ${restarted.length} process(es)`,
+        message: `Restarted ${restarted.length} process(es)${zeroDowntime ? ' with zero-downtime' : ''}`,
         data: restarted,
       };
     }
@@ -394,11 +407,23 @@ export class Daemon {
       };
     }
 
-    const newProcessInfo = await this.processManager.restartProcess(processInfo.id);
+    let newProcessInfo;
+    if (zeroDowntime) {
+      try {
+        newProcessInfo = await this.processManager.restartZeroDowntime(processInfo.id);
+      } catch (error: any) {
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+    } else {
+      newProcessInfo = await this.processManager.restartProcess(processInfo.id);
+    }
 
     return {
       success: true,
-      message: `Process restarted: ${newProcessInfo.name} (${newProcessInfo.id})`,
+      message: `Process restarted: ${newProcessInfo.name} (${newProcessInfo.id})${zeroDowntime ? ' with zero-downtime' : ''}`,
       data: newProcessInfo,
     };
   }

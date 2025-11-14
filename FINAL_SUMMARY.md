@@ -6,7 +6,7 @@ We've built a **modern, lightweight PM2 alternative** with killer features that 
 
 ### 📊 Implementation Status
 
-**Core Tasks (1-15): 100% COMPLETE**
+**Core Tasks (1-16): 93% COMPLETE**
 
 | Task | Feature | Status |
 |------|---------|--------|
@@ -23,7 +23,9 @@ We've built a **modern, lightweight PM2 alternative** with killer features that 
 | 11 | **Resource monitor (CPU/Memory)** | ✅ DONE |
 | 12 | **Beautiful status table** | ✅ DONE |
 | 13 | **Watch mode (file changes)** | ✅ DONE |
+| 14 | **Cluster Manager** | 🚧 IN PROGRESS |
 | 15 | **Health checker** | ✅ DONE |
+| 16 | **Zero-downtime restart** | 🚧 IN PROGRESS |
 | 24 | **Color formatting** | ✅ DONE |
 
 ### 🔥 Killer Features (Better than PM2)

@@ -16,6 +16,7 @@ import { CrashReporter } from '../components/crash-reporter';
 import { ResourceMonitor } from '../components/resource-monitor';
 import { WatchManager } from '../components/watch-manager';
 import { HealthChecker } from '../components/health-checker';
+import { ClusterManager } from '../components/cluster-manager';
 
 export class ProcessManager extends EventEmitter {
   private registry: ProcessRegistry;
@@ -26,6 +27,7 @@ export class ProcessManager extends EventEmitter {
   private resourceMonitor: ResourceMonitor;
   private watchManager: WatchManager;
   private healthChecker: HealthChecker;
+  private clusterManager: ClusterManager;
 
   constructor() {
     super();
@@ -37,6 +39,7 @@ export class ProcessManager extends EventEmitter {
     this.resourceMonitor = new ResourceMonitor();
     this.watchManager = new WatchManager();
     this.healthChecker = new HealthChecker();
+    this.clusterManager = new ClusterManager();
     
     // Forward restart events
     this.restartManager.on('crash-loop', (data) => this.emit('crash-loop', data));
@@ -92,6 +95,16 @@ export class ProcessManager extends EventEmitter {
       ...DEFAULT_PROCESS_CONFIG,
       ...config,
     };
+
+    // Check if clustering is needed
+    const instances = fullConfig.instances === 'auto' ? require('os').cpus().length : (fullConfig.instances || 1);
+    
+    console.log(`[DEBUG] Starting ${fullConfig.name}: instances=${instances}, type=${typeof instances}`);
+    
+    if (instances > 1) {
+      console.log(`[DEBUG] Starting clustered process with ${instances} instances`);
+      return await this.startClusteredProcess(fullConfig, instances);
+    }
 
     // Generate unique ID
     const id = this.registry.generateId();
@@ -464,5 +477,109 @@ export class ProcessManager extends EventEmitter {
    */
   async getCrashHistory(id: string, limit?: number) {
     return await this.crashReporter.getCrashHistory(id, limit);
+  }
+
+  /**
+   * Start a clustered process (multiple workers)
+   */
+  private async startClusteredProcess(config: ProcessConfig, instances: number): Promise<ProcessInfo> {
+    console.log(`[DEBUG] startClusteredProcess called with ${instances} instances`);
+    const masterId = this.registry.generateId();
+
+    // Create master process info
+    const masterInfo: ProcessInfo = {
+      id: masterId,
+      name: config.name,
+      pid: process.pid, // Master uses daemon PID
+      status: 'running',
+      uptime: 0,
+      restartCount: 0,
+      cpu: 0,
+      memory: 0,
+      config: { ...config, instances },
+      startTime: Date.now(),
+    };
+
+    this.registry.add(masterInfo);
+    console.log(`[DEBUG] Master process registered: ${masterId}`);
+
+    // Create cluster
+    console.log(`[DEBUG] Creating cluster...`);
+    await this.clusterManager.createCluster(
+      masterId,
+      config,
+      async (workerId) => {
+        console.log(`[DEBUG] Spawning worker ${workerId}`);
+        // Spawn worker process
+        const childProcess = await this.spawnProcess(masterId, config);
+        const workerKey = `${masterId}-worker-${workerId}`;
+        this.processes.set(workerKey, childProcess);
+        
+        // Set up handlers for worker
+        this.setupProcessHandlers(masterId, childProcess);
+        
+        console.log(`[DEBUG] Worker ${workerId} spawned with PID ${childProcess.pid}`);
+        return childProcess.pid || 0;
+      }
+    );
+
+    console.log(`[DEBUG] Cluster created successfully`);
+    this.emit('cluster:started', masterInfo);
+
+    return masterInfo;
+  }
+
+  /**
+   * Restart with zero-downtime (cluster mode only)
+   */
+  async restartZeroDowntime(id: string): Promise<ProcessInfo> {
+    const processInfo = this.registry.get(id);
+    if (!processInfo) {
+      throw new Error(`Process not found: ${id}`);
+    }
+
+    if (!this.clusterManager.isClustered(id)) {
+      throw new Error(`Process ${processInfo.name} is not clustered. Use regular restart instead.`);
+    }
+
+    await this.clusterManager.restartClusterZeroDowntime(
+      id,
+      async (workerId) => {
+        const childProcess = await this.spawnProcess(id, processInfo.config);
+        const workerKey = `${id}-worker-${workerId}`;
+        this.processes.set(workerKey, childProcess);
+        this.setupProcessHandlers(id, childProcess);
+        return childProcess.pid || 0;
+      },
+      async (workerId) => {
+        const workerKey = `${id}-worker-${workerId}`;
+        const childProcess = this.processes.get(workerKey);
+        if (childProcess) {
+          childProcess.kill('SIGTERM');
+          await this.waitForExit(childProcess, 10000);
+          if (!childProcess.killed) {
+            childProcess.kill('SIGKILL');
+          }
+          this.processes.delete(workerKey);
+        }
+      },
+      processInfo.config.healthCheck
+        ? async (workerId) => {
+            const result = await this.healthChecker.checkHealthWithRetries(
+              id,
+              processInfo.config.healthCheck!
+            );
+            return result.healthy;
+          }
+        : undefined
+    );
+
+    processInfo.restartCount++;
+    processInfo.lastRestartTime = Date.now();
+    processInfo.lastRestartReason = 'zero-downtime';
+
+    this.emit('cluster:restarted', processInfo);
+
+    return processInfo;
   }
 }
